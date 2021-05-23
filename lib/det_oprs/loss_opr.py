@@ -38,6 +38,20 @@ def smooth_l1_loss(pred, target, beta: float):
     return loss.sum(axis=1)
 
 
+def multi_task_loss(all_pred_reg, all_pred_cls, labels, bbox_target, fg_mask, valid_mask):
+    loss_reg = smooth_l1_loss(
+                all_pred_reg[fg_mask],
+                bbox_target[fg_mask],
+                config.smooth_l1_beta)
+    loss_cls = focal_loss(
+            all_pred_cls[valid_mask],
+            labels[valid_mask],
+            config.focal_loss_alpha,
+            config.focal_loss_gamma)
+
+    return loss_reg, loss_cls
+
+
 def emd_loss_softmax(p_b0, p_s0, p_b1, p_s1, targets, labels):
     """
     Input example 
