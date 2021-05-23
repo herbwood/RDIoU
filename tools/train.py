@@ -221,7 +221,7 @@ def run_train():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_dir', '-md', default=None,required=True,type=str)
     parser.add_argument('--resume_weights', '-r', default=None,type=int)    
-    parser.add_argument('--gpu-id', '-g', default='1',type=str)
+    parser.add_argument('--gpu-id', '-g', default='0',type=str)
     # parser.add_argument('--port', '-p', default='8888', type=str)
 
     args = parser.parse_args()
