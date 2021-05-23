@@ -14,16 +14,16 @@ add_path(os.path.join(root_dir, 'lib'))
 class Crowd_human:
     class_names = ['background', 'person']
     num_classes = len(class_names)
-    root_folder = '../lib/data/CrowdHuman'
-    image_folder = '../lib/data/dataset'
-    train_source = '../lib/data/annotation_train.odgt'
-    eval_source = '../lib/data/annotation_val.odgt'
+    root_folder = './lib/data/CrowdHuman'
+    image_folder = './lib/data/dataset'
+    train_source = './lib/data/annotation_train.odgt'
+    eval_source = './lib/data/annotation_val.odgt'
 
 class Config:
     output_dir = 'outputs'
     model_dir = os.path.join(output_dir, 'model_dump')
     eval_dir = os.path.join(output_dir, 'eval_dump')
-    init_weights = '../lib/data/model/resnet50_fbaug.pth'
+    init_weights = './lib/data/model/resnet50_fbaug.pth'
 
     # ----------data config---------- #
     image_mean = np.array([103.530, 116.280, 123.675])
@@ -44,7 +44,7 @@ class Config:
 
     # ----------train config---------- #
     backbone_freeze_at = 2
-    train_batch_per_gpu = 2
+    train_batch_per_gpu = 4
     momentum = 0.9
     weight_decay = 1e-4
     base_lr = 3.125e-4
@@ -67,7 +67,7 @@ class Config:
     # ----------dataset config---------- #
     nr_box_dim = 5
     max_boxes_of_image = 500
-
+    
     # --------anchor generator config-------- #
     anchor_base_size = 32 # the minimize anchor size in the bigest feature map.
     anchor_base_scale = [2**0, 2**(1/3), 2**(2/3)]
@@ -79,8 +79,5 @@ class Config:
     negative_thresh = 0.4
     positive_thresh = 0.5
     allow_low_quality = True
-
-    # bbox_normalize_means = np.array([0, 0, 0, 0])
-    # bbox_normalize_stds = np.array([0.1, 0.1, 0.2, 0.2])
 
 config = Config()
