@@ -9,9 +9,8 @@ from utils import misc_utils
 
 class CrowdHuman(Dataset):
 
-    def __init__(self, 
-                config, # config class as an input 
-                if_train : bool):
+    def __init__(self, config, if_train : bool):
+        # config class as an input
 
         if if_train:
             self.training = True
@@ -28,15 +27,13 @@ class CrowdHuman(Dataset):
         self.records : List = misc_utils.load_json_lines(source) 
         self.config = config
 
-    def __getitem__(self, 
-                    index : int) -> Dict:
+    def __getitem__(self, index : int) -> Dict:
         return self.load_record(self.records[index])
 
     def __len__(self):
         return len(self.records)
 
-    def load_record(self, 
-                    record : Dict) -> Tuple:
+    def load_record(self, record : Dict) -> Tuple:
         
         if self.training:
             if_flap = np.random.randint(2) == 1
@@ -91,8 +88,7 @@ class CrowdHuman(Dataset):
             return image, gtboxes, im_info, record['ID']
 
     
-    def merge_batch(self, 
-                    data : Tuple):
+    def merge_batch(self, data : Tuple):
         
         # image
         images = [it[0] for it in data]
