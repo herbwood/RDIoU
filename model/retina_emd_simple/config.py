@@ -15,10 +15,9 @@ class Crowd_human:
     class_names = ['background', 'person']
     num_classes = len(class_names)
     root_folder = '../lib/data/CrowdHuman'
-    image_folder = r'C:\Users\June hyoung Kwon\PROJECTS\images'
-    val_image_folder = r'C:\Users\June hyoung Kwon\PROJECTS\KCC_2021\lib\data\CrowdHuman\val_images'
-    train_source = os.path.join(r'C:\Users\June hyoung Kwon\PROJECTS\KCC_2021\lib\data\annotation_train.odgt')
-    eval_source = os.path.join(r'C:\Users\June hyoung Kwon\PROJECTS\KCC_2021\lib\data\annotation_val.odgt')
+    image_folder = '../lib/data/dataset'
+    train_source = '../lib/data/annotation_train.odgt'
+    eval_source = '../lib/data/annotation_val.odgt'
 
 class Config:
     output_dir = 'outputs'

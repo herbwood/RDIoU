@@ -12,7 +12,7 @@ from backbone.bfp import BFP
 from det_oprs.anchor_generator import AnchorGenerator
 from det_oprs.retina_anchor_target_diou import retina_anchor_target_diou
 from det_oprs.bbox_opr import bbox_transform_inv_opr
-from det_oprs.loss_opr import emd_loss_focal, emd_loss_simple_diou, emd_loss_repulsion_diou
+from det_oprs.loss_opr import emd_loss_repulsion_diou
 from det_oprs.utils import get_padded_tensor
 
 
@@ -99,12 +99,12 @@ class RetinaNet_Criteria(nn.Module):
         all_pred_cls = all_pred_cls.reshape(-1, 2, config.num_classes-1)
         all_pred_reg = all_pred_reg.reshape(-1, 2, 4)
 
-        loss0 = emd_loss_simple_diou(
+        loss0 = emd_loss_repulsion_diou(
                 all_pred_reg[:, 0], all_pred_cls[:, 0],
                 all_pred_reg[:, 1], all_pred_cls[:, 1],
                 bbox_targets, labels, anchors)
                 
-        loss1 = emd_loss_simple_diou(
+        loss1 = emd_loss_repulsion_diou(
                 all_pred_reg[:, 1], all_pred_cls[:, 1],
                 all_pred_reg[:, 0], all_pred_cls[:, 0],
                 bbox_targets, labels, anchors)
