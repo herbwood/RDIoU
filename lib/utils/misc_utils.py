@@ -2,7 +2,6 @@ import os
 import json
 import cv2
 import numpy as np
-from typing import List
 
 def load_img(image_path):
     
@@ -11,7 +10,7 @@ def load_img(image_path):
     return img
 
 
-def load_json_lines(fpath : str) -> List:
+def load_json_lines(fpath : str):
 
     assert os.path.exists(fpath)
 
@@ -102,9 +101,9 @@ def load_masks(dict_input, key_name, key_box):
 
 
 def load_gt(dict_input, 
-            key_name : str, 
-            key_box : str, 
-            class_names : List[str]):
+            key_name, 
+            key_box, 
+            class_names):
     """
     gtboxes = misc_utils.load_gt(record, 'gtboxes', 'fbox', self.config.class_names)
 

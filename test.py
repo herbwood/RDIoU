@@ -37,8 +37,12 @@ def eval_all(args, config, network):
     # multiprocessing
     num_devs = len(devices)
     len_dataset = len(crowdhuman)
+
+    # gpu당 처리할 이미지 
     num_image = math.ceil(len_dataset / num_devs)
-    result_queue = Queue(500)
+
+    # 단방향으로만 정보를 전송
+    result_queue = Queue()
 
     procs = []
     all_results = []
@@ -46,6 +50,9 @@ def eval_all(args, config, network):
     for i in range(num_devs):
         start = i * num_image
         end = min(start + num_image, len_dataset)
+
+        # Process : 단일 프로세스를 생성하는 경우 사용 
+        # target 인자에 해당하는 함수에 args 전달 
         proc = Process(target=inference, args=(config, network, 
                                                 model_file, devices[i], 
                                                 crowdhuman, start, end, result_queue))
@@ -67,8 +74,7 @@ def eval_all(args, config, network):
     fpath = os.path.join(evalDir, 'dump-{}.json'.format(args.resume_weights))
     misc_utils.save_json_lines(all_results, fpath)
 
-
-    # evaluation
+    # AP, MR, JI 값 evaluate 
     eval_path = os.path.join(evalDir, 'eval-{}.json'.format(args.resume_weights))
     eval_fid = open(eval_path,'w')
     res_line, JI = compute_JI.evaluation_all(fpath, 'box')
@@ -103,22 +109,26 @@ def inference(config, network, model_file, device, dataset, start, end, result_q
     # inference
     for (image, gt_boxes, im_info, ID) in data_iter:
         pred_boxes = net(image.cuda(device), im_info.cuda(device))
-        scale = im_info[0, 2]
+        scale = im_info[0, 2] # scale 
 
         if config.test_nms_method == 'set_nms':
 
             assert pred_boxes.shape[-1] > 6, "Not EMD Network! Using normal_nms instead."
             assert pred_boxes.shape[-1] % 6 == 0, "Prediction dim Error!"
 
-            top_k = pred_boxes.shape[-1] // 6
-            n = pred_boxes.shape[0]
+            top_k = pred_boxes.shape[-1] // 6 # 2 
+            n = pred_boxes.shape[0] # # of predicted boxes 
             pred_boxes = pred_boxes.reshape(-1, 6)
 
+            # 0, 0, 1, 1, 2, 2 ..... idents를 붙임 
             idents = np.tile(np.arange(n)[:,None], (1, top_k)).reshape(-1, 1)
             pred_boxes = np.hstack((pred_boxes, idents))
-            keep = pred_boxes[:, 4] > config.pred_cls_threshold
 
+            # class score가 threshold보다 높은 경우만 keep 
+            keep = pred_boxes[:, 4] > config.pred_cls_threshold
             pred_boxes = pred_boxes[keep]
+
+            # set nms 수행 
             keep = nms_utils.set_cpu_nms(pred_boxes, 0.5)
             pred_boxes = pred_boxes[keep]
 

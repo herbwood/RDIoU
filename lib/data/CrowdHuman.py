@@ -9,9 +9,9 @@ from utils import misc_utils
 
 class CrowdHuman(Dataset):
 
-    def __init__(self, config, if_train : bool):
-        # config class as an input
+    def __init__(self, config, if_train):
 
+        # training 여부, resize할 이미지 크기, 학습 데이터 경로 정의 
         if if_train:
             self.training = True
             source = config.train_source # train path
@@ -24,83 +24,95 @@ class CrowdHuman(Dataset):
             self.short_size = config.eval_image_short_size
             self.max_size = config.eval_image_max_size
 
-        self.records : List = misc_utils.load_json_lines(source) 
+        self.records= misc_utils.load_json_lines(source) 
         self.config = config
 
-    def __getitem__(self, index : int) -> Dict:
+    def __getitem__(self, index):
         return self.load_record(self.records[index])
 
     def __len__(self):
         return len(self.records)
 
-    def load_record(self, record : Dict) -> Tuple:
+    def load_record(self, record):
         
+        # random하게 flip할지 말지 결정 
         if self.training:
             if_flap = np.random.randint(2) == 1
         else:
             if_flap = False
 
-        # image
+        # load image 
         image_path = os.path.join(self.config.image_folder, record['ID']+'.jpg')
-
         image = misc_utils.load_img(image_path)
         image_h = image.shape[0]
         image_w = image.shape[1]
 
+        # random flip 수행 
         if if_flap:
             image = cv2.flip(image, 1)
 
         if self.training:
-            # ground_truth 
-            gtboxes = misc_utils.load_gt(record, 'gtboxes', 'fbox', self.config.class_names)                           
-            keep : List[bool] = (gtboxes[:, 2]>=0) * (gtboxes[:, 3]>=0) # width, height가 0 이상인 애들만 남긴다 
+            # gtboxes shape : [# of gt boxes, 5(x, y, width, height, tag)]
+            # annotation으로부터 ground_truth box에 대한 정보 불러옴
+            # width, height가 0 이상인 애들만 남긴다 
+            # xywh => x1y1x2y2
+            gtboxes = misc_utils.load_gt(record, 'gtboxes', 'fbox', self.config.class_names)                          
+            keep = (gtboxes[:, 2]>=0) * (gtboxes[:, 3]>=0) 
             gtboxes = gtboxes[keep, :]
-            gtboxes[:, 2:4] += gtboxes[:, :2] # xywh => x1y1x2y2
+            gtboxes[:, 2:4] += gtboxes[:, :2] 
             
-
+            # gt box에 대해서도 random flip 수행 
             if if_flap:
                 gtboxes = flip_boxes(gtboxes, image_w)
             
+            # gtbox의 수 
             nr_gtboxes = gtboxes.shape[0]
+
+            # 한 장의 이미지에 대한 height, width, 이미지 내의 gt box의 수를 저장 
             im_info = np.array([0, 0, 1, image_h, image_w, nr_gtboxes])
 
             # image
             # gtboxes : [x1, y1, x2, y2, tag]
-            # im_info : [0, 0, 1, h, w, number of gtboxes]
+            # im_info : [0, 0, 1, height, width, # of gtboxes]
             return image, gtboxes, im_info
 
+        # test 시 
         else:
-            # image
+            # resize할 이미지 크기  
             t_height, t_width, scale = target_size(image_h, image_w, self.short_size, self.max_size)
 
-            # INTER_CUBIC, INTER_LINEAR, INTER_NEAREST, INTER_AREA, INTER_LANCZOS4
+            # 이미지 resize 및 tensor화
             resized_image = cv2.resize(image, (t_width, t_height), interpolation=cv2.INTER_LINEAR)
             resized_image = resized_image.transpose(2, 0, 1)
             image = torch.tensor(resized_image).float()
+
+            # gt box에 대한 정보 저장 
             gtboxes = misc_utils.load_gt(record, 'gtboxes', 'fbox', self.config.class_names)
             gtboxes[:, 2:4] += gtboxes[:, :2]
             gtboxes = torch.tensor(gtboxes)
 
-            # im_info : (target height, target width, scale, image height, image width, number of gt boxes)
+            # im_info : (resized height, resized width, scale, image height, image width, # of gt boxes)
             nr_gtboxes = gtboxes.shape[0]
             im_info = torch.tensor([t_height, t_width, scale, image_h, image_w, nr_gtboxes])
 
+            # record['ID'] : 이미지 파일 이름 
             return image, gtboxes, im_info, record['ID']
 
     
-    def merge_batch(self, data : Tuple):
+    def merge_batch(self, data):
         
         # image
         images = [it[0] for it in data]
         gt_boxes = [it[1] for it in data]
         im_info = np.array([it[2] for it in data])
 
+        # image height, width 
         batch_height = np.max(im_info[:, 3])
         batch_width = np.max(im_info[:, 4])
 
+        # pad and resize images 
         padded_images = [pad_image(im, batch_height, batch_width, self.config.image_mean) for im in images]
         t_height, t_width, scale = target_size(batch_height, batch_width, self.short_size, self.max_size)
-
         # INTER_CUBIC, INTER_LINEAR, INTER_NEAREST, INTER_AREA, INTER_LANCZOS4
         resized_images = np.array([cv2.resize(
                 im, (t_width, t_height), interpolation=cv2.INTER_LINEAR) for im in padded_images])
@@ -114,6 +126,8 @@ class CrowdHuman(Dataset):
             gt_padded = np.zeros((self.config.max_boxes_of_image, self.config.nr_box_dim))
             it[:, 0:4] *= scale
             max_box = min(self.config.max_boxes_of_image, len(it))
+
+            # scaled, padded된 gt box를 가져옴 
             gt_padded[:max_box] = it[:max_box]
             ground_truth.append(gt_padded)
 
@@ -125,6 +139,7 @@ class CrowdHuman(Dataset):
         im_info[:, 2] = scale
         im_info = torch.tensor(im_info)
 
+        # gt box의 수가 2 미만인 경우... 
         if max(im_info[:, -1] < 2):
             return None, None, None
         else:

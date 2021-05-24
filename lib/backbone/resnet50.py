@@ -23,6 +23,9 @@ class Bottleneck(nn.Module):
                 FrozenBatchNorm2d(out_cha),)
 
         self.conv1 = nn.Conv2d(in_cha, neck_cha, kernel_size=1, stride=1, bias=has_bias)
+        
+        # FrozenBatchNorm2d : batch size가 매우 작은 경우, batch statistics가 큰 영향을 끼치지 못하고 오히려 성능을 감소시킨다. 
+        # 또한 다수의 GPU를 사용할 때, 각각의 GPU에서 batch statistics가 연산되지 않아, 오직 하나의 GPU에서만 batch norm을 수행한다고 한다.
         self.bn1 = FrozenBatchNorm2d(neck_cha)
 
         self.conv2 = nn.Conv2d(neck_cha, neck_cha, kernel_size=3, stride=stride, padding=1, bias=has_bias)
@@ -53,8 +56,8 @@ class Bottleneck(nn.Module):
 
 class ResNet50(nn.Module):
     def __init__(self, 
-                 freeze_at : int, 
-                 has_bias : bool = False) -> List:
+                 freeze_at, 
+                 has_bias = False):
         super(ResNet50, self).__init__()
 
         self.has_bias = has_bias
@@ -131,6 +134,18 @@ class ResNet50(nn.Module):
         return outputs
 
 if __name__ == "__main__":
-    input = torch.randn((1, 3, 64, 64))
+    # input : [batch size, channel, height, width]
+    input = torch.randn((2, 3, 64, 64))
     model = ResNet50(2, False)
     output = model(input)
+
+    """
+    Output : 서로 다른 크기의 feature map을 요소로 가지는 list
+    
+    torch.Size([2, 256, 16, 16])
+    torch.Size([2, 512, 8, 8])
+    torch.Size([2, 1024, 4, 4])
+    torch.Size([2, 2048, 2, 2])
+    """
+    for ot in output:
+        print(ot.shape)

@@ -5,7 +5,7 @@ import pdb
 def set_cpu_nms(dets, thresh):
     """Pure Python NMS baseline."""
 
-    # dets shape : [number of predictions, 6]
+    # dets shape : [# of predictions, 6]
     # [number of predictions (x1, x2, x2, y2, confidence score, tag)]
 
     # get IoU between superior box and all the other inferior boxes
@@ -36,35 +36,37 @@ def set_cpu_nms(dets, thresh):
 
         return ovr
 
-    # sort detection in descending order by confidence score
+    # detection을 class score에 따라 내림차순으로 정렬 
     scores = dets[:, 4]
     order = np.argsort(-scores)
     dets = dets[order]
 
     numbers = dets[:, -1] # tag : set number 
     keep = np.ones(len(dets)) == 1 # ex) [True, Fals, True, ...]
-    ruler = np.arange(len(dets)) # [0, 1, 2, ..., number of boxes]
+    ruler = np.arange(len(dets)) # [0, 1, 2, ..., # of boxes]
 
     while ruler.size > 0:
-        basement = ruler[0] # superior box index
-        ruler=ruler[1:] # indexes of inferior boxes
-        num = numbers[basement] # set number of superior box
+        basement = ruler[0] # 비교 기준이 되는, class score가 높은 bbox 
+        ruler=ruler[1:] # 비교 대상이 되는 열등한 bbox 
+        num = numbers[basement] # 비교 기준이 되는 bbox의 set number 
 
         # calculate the body overlap
         overlap = _overlap(dets[:, :4], basement, ruler)
-        indices = np.where(overlap > thresh)[0] # thresh = 0.5, indexes of IoU over threshold
+        indices = np.where(overlap > thresh)[0] # IoU 값이 0.5 이상인 box의 index 
 
-        # index of inferior box with IoU over threshold and same set number as superior box
+        # 비교 기준이 되는 bbox와의 IoU 값이 임계치 이상이면서 set number가 같은 bbox의 index 
         loc = np.where(numbers[ruler][indices] == num)[0]
 
         # the mask won't change in the step
         mask = keep[ruler[indices][loc]]#.copy() # bool value of loc equal to 1 
-        keep[ruler[indices]] = False # remove inferior boxes over IoU threshold and not same set number as superior box
-        keep[ruler[indices][loc][mask]] = True # keep the same set number boxe
+        keep[ruler[indices]] = False # IoU 값이 임계치 이상인 bbox에 대하여 False 
+        keep[ruler[indices][loc][mask]] = True # 같은 set number를 가진 bbox에 대해서 True
+
+        # 제거 
         ruler[~keep[ruler]] = -1 # 
         ruler = ruler[ruler > 0] # remove all erased boxes
 
-    
+    # class score 순으로 index 정렬 
     keep = keep[np.argsort(order)]
 
     return keep
